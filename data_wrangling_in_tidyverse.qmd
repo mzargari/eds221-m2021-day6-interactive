@@ -198,6 +198,7 @@ ex_17 <- wb_clean %>%
 
 ```{r}
 ## The new columns name goes on the left hand side and the data where that comes from goes on the right hand side and they get outputted in this order
+## New name = Old name
 
 ex_18 <- wb_clean %>% 
   select(year_new = year
@@ -213,4 +214,137 @@ ex_19 <- wb_clean %>%
          , country
          , water_stress) %>% 
   filter(country %in% c("Israel", "Iran, Islamic Rep.", "United States"))
+```
+
+# `rename()`
+
+```{r}
+## New name = old name
+
+ex_20 <- wb_clean %>% 
+  rename(ffcp = fossil_fuels_cons_pct
+         , ws = water_stress)
+```
+
+```{r}
+ex_21 <- wb_clean %>% 
+  rename(COUNTRY_capitalized = country
+         , YEAR_capitalized = year)
+```
+
+# `mutate()`: update an existing column, or add a new one
+
+## If you assign a NEW column name, it will add a new column to the end of your data frame. If you assign an existing column name, it will overwrite that column
+
+```{r}
+## This creates a new column that is measured in tons to get the kilotons column and multiple the values by 1000
+ex_22 <- wb_clean %>% 
+  mutate(co2_emissions_t = co2_emissions_kt * 1000)
+```
+
+```{r}
+## This creates a new column called "yay" that has "YAY" typed all the way down
+ex_23 <- wb_clean %>% 
+  mutate(yay = "YAY")
+```
+
+```{r}
+## This gets all the countries and adds "YAY" at the end of their names
+ex_24 <- wb_clean %>% 
+  mutate(country = paste(country, "YAY"))
+```
+
+```{r}
+## This gets all the countries and adds the number that they are at the end of their names
+ex_25 <- wb_clean %>% 
+  mutate(country = paste(country, seq_along(country)))
+```
+
+```{r}
+## Characters are left justified
+ex_26 <- wb_clean %>% 
+  mutate(year = as.character(year))
+```
+
+```{r}
+## Numbers are right justifies
+ex_27 <- wb_clean %>% 
+  mutate(year = as.numeric(year))
+```
+
+### This relocates the column to be after "year": `relocate()`
+
+```{r}
+ex_28 <- wb_clean %>% 
+  relocate(water_stress, .after = year)
+
+ex_29 <- wb_clean %>% 
+  mutate(co2_emissions_t = co2_emissions_kt * 1000) %>% 
+  relocate(co2_emissions_t, .after = co2_emissions_kt)
+```
+
+# `group_by()`: creates groups under the hood based on variables you specify
+
+## Just piping in group_by() does not do anything and you need summarize() afterwards for it to work
+
+# `summarize()` : applies your functions to each group above, and returns them in a nice summary able
+
+```{r}
+ex_30 <- starwars %>% 
+  group_by(species, homeworld) %>% 
+  summarize(mean_height = mean(height, na.rm = TRUE)
+            , mean_mass = mean(mass, na.rm = TRUE))
+```
+
+```{r}
+ex_31 <- starwars %>% 
+  filter(homeworld %in% c("Naboo", "Tatooine")) %>% 
+  group_by(species, homeworld) %>% 
+  summarize(mean_height = mean(height, na.rm = TRUE)
+            , mean_mass = mean(mass, na.rm = TRUE))
+```
+
+# Frequency Table: `uncount()`
+
+```{r}
+df <- tribble(
+  ~species, ~length, ~number_of_observations,
+  "lobster", 12, 4,
+  "lobster", 14, 6,
+  "lobster", 15, 2,
+)
+
+df_case <- df %>% 
+  uncount(number_of_observations)
+```
+
+# `count()`: counts observations and is a combination of group_by(), summarize(), n()
+
+```{r}
+ex_32 <- starwars %>% 
+  count(homeworld, species)
+
+## "Size" is what the name of the column will be
+ex_33 <- starwars %>% 
+  group_by(homeworld, species) %>% 
+  summarize(size = n(), mean_height = mean(height, na.rm = TRUE))
+```
+
+## Example: 
+
+### Starting from wb_clean, only keep observations for Nicaragua, Ecuador, Peru, and Chile, AND for years greater than 2005 (which means data starts at 2006). 
+
+### Only keep columns for country, year, and co2 emissions. 
+
+### Add a new column that is co2 emissions converted to megatons. 
+
+### Find the total co2 emissions in megatons for years still in the dataset by country
+
+```{r}
+example <- wb_clean %>% 
+  filter(country %in% c("Nicaragua", "Ecuador", "Peru", "Chile") & year > 2005) %>% 
+  select(country, year, co2_emissions_kt) %>% 
+  mutate(co2_emissions_mt = co2_emissions_kt / 1000) %>% 
+  group_by(country) %>% 
+  summarize(total_CO2_megatons_since_2005 = sum(co2_emissions_mt, na.rm = TRUE))
 ```
