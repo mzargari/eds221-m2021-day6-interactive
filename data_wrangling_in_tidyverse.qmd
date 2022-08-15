@@ -1,0 +1,216 @@
+---
+title: "Data wrangling in TidyVerse"
+author: "Michael Zargari"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(here)
+library(janitor)
+```
+
+## Read in WB data files
+
+```{r}
+wb_indicators <- read_csv(here("data", "wb_indicators.csv"), na = c("..", ""))
+wb_indicators_metadata <- read_csv(here("data", "wb_indicators_metadata.csv"))
+```
+
+# Tidy up my data
+
+## pivot_longer to get years into a single column
+
+```{r}
+wb_indicators_long <- wb_indicators %>% 
+  pivot_longer(cols = "2001 [YR2001]":"2020 [YR2020]"
+               , names_to = "year"
+               , values_to = "indicator_value")
+
+ View(wb_indicators_long)
+```
+
+## separate to clean up the year column
+
+## IF THE COLUMN EXISTS AND DOES NOT HAVE A SPACE IN IT, THEN YOU DO NOT NEED TO PUT IT IN QUOTES
+
+```{r}
+wb_clean <- wb_indicators_long %>% 
+  separate(col = year
+           , into = c("year", "year_chr")
+           , sep = " ") %>%
+  select(-year_chr, -"Country Code", -"Series Code") %>%
+  mutate(year = as.numeric(year)) %>% 
+  drop_na("Series Name") %>% 
+  pivot_wider(names_from = "Series Name"
+              , values_from = indicator_value)
+
+names(wb_clean) <- c("country", "year", "access_clean_fuels_pp", "access_electricity_pp", "co2_emissions_kt", "fossil_fuels_cons_pct", "water_stress")
+
+# View(wb_clean)
+```
+
+```{r}
+wb_subset <- wb_clean %>% 
+  filter(country %in% c("Algeria", "Barbados", "Bulgaria", "Chile"))
+
+# View(wb_subset)
+```
+
+```{r}
+ggplot(data = wb_subset, aes(  x = year
+                             , y = co2_emissions_kt
+                             )) +
+  geom_line(aes(color = country)) +
+  facet_wrap(~country)
+```
+
+# After Lunch:
+
+## Filtering data
+
+```{r}
+# View(starwars)
+```
+
+### Example 1: Filter to only keep exact matches
+
+```{r}
+ex_1 <- starwars %>% 
+  filter(height > 180)
+
+## Checking that our filter works
+# min(ex_1$height)
+```
+
+```{r}
+ex_2 <- starwars %>% 
+  filter(eye_color == "blue")
+
+## Checking that our filter works
+# unique(ex_2$eye_color)
+```
+
+```{r}
+ex_3 <- starwars %>% 
+  filter(homeworld == "Naboo")
+
+## Checking that our filter works
+ # unique(ex_3$homeworld)
+```
+
+### Examples: filtering on multiple conditions
+
+```{r}
+ex_4 <- starwars %>% 
+  filter(height > 180 & homeworld == "Tatooine")
+
+## Checking that our filter works
+ # min(ex_4$height)
+ # unique(ex_4$homeworld)
+```
+
+Create subset where the hair color is brown and the species is human
+
+```{r}
+ex_5 <- starwars %>% 
+  filter(hair_color == "brown" & species == "Human")
+```
+
+### Filtering OR statements
+
+```{r}
+ex_6 <- starwars %>% 
+  filter(height > 180 | eye_color == "yellow")
+```
+
+Create a subset that keeps rows if homeworld is Endor OR species is droid
+
+```{r}
+ex_7 <- starwars %>% 
+  filter(homeworld == "Endor" | species == "Droid")
+```
+
+```{r}
+ex_8 <- starwars %>% 
+  filter(eye_color == "yellow"
+         | eye_color == "blue"
+         | eye_color == "red")
+
+## This does the exact same thing as above
+ex_9 <- starwars %>% 
+  filter(eye_color %in% c("yellow", "blue", "red"))
+
+## This will go through and iterate in order of the eye_color column to see what column matches "yellow" and keeps that, then continues down the list and finds a "blue" then continues until it finds a "red" then starts to look for a "yellow" again etc.
+ex_10 <- starwars %>% 
+  filter(eye_color == c("yellow", "blue", "red"))
+```
+
+Create a subset where homeworld is Endor OR Tatooine OR Naboo AND height \< 150
+
+```{r}
+ex_11 <- starwars %>% 
+  filter(homeworld %in% c("Endor", "Tatooine", "Naboo") & height < 150)
+```
+
+### Examples with negate functions
+
+```{r}
+ex_12 <- starwars %>% 
+  filter(species != "Human")
+```
+
+```{r}
+ex_13 <- starwars %>% 
+  filter(!homeworld %in% c("Endor", "Tatooine", "Naboo"))
+```
+
+# Select or exclude columns: `select()`
+
+```{r}
+## This only takes out/outputs the columns we listed
+
+ex_14 <- wb_clean %>% 
+  select(country, year, co2_emissions_kt)
+```
+
+```{r}
+## This outputs the columns from year all the way until fossil_fuels_cons_pct
+
+ex_15 <- wb_clean %>% 
+  select(year:fossil_fuels_cons_pct)
+```
+
+```{r}
+## This outputs the columns from year all the way until fossil_fuels_cons_pct except for access_electricity_pp
+## You could also replace the comma (,) with a &
+
+ex_16 <- wb_clean %>% 
+  select(year:fossil_fuels_cons_pct, -access_electricity_pp)
+```
+
+```{r}
+ex_17 <- wb_clean %>% 
+  filter(country %in% c("Bolivia", "Chile", "Mexico")) %>% 
+  select(country:fossil_fuels_cons_pct)
+```
+
+```{r}
+## The new columns name goes on the left hand side and the data where that comes from goes on the right hand side and they get outputted in this order
+
+ex_18 <- wb_clean %>% 
+  select(year_new = year
+         , emissions = co2_emissions_kt
+         , country_name = country)
+```
+
+Select only columns for country, year, and water stress, and reorder them as year, country ,water stress, then filter to only include observations for any three countries of your choosing
+
+```{r}
+ex_19 <- wb_clean %>% 
+  select(year
+         , country
+         , water_stress) %>% 
+  filter(country %in% c("Israel", "Iran, Islamic Rep.", "United States"))
+```
